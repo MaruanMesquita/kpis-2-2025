@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard KPIs Funcional Completo</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+  :root {
+    --bg-light: #f1f5fb;
+    --text-light: #2c3e50;
+    --bg-dark: #121212;
+    --text-dark: #e0e0e0;
+    --color-primary: #2563eb;
+    --color-primary-dark: #22c55e;
+    --sidebar-bg-light: #3b4657;
+    --sidebar-bg-dark: #1e293b;
+    --table-bg-light: white;
+    --table-bg-dark: #283344;
+    --border-light: #27ae60;
+    --border-dark: #22c55e;
+  }
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-light);
+    color: var(--text-light);
+    transition: background 0.5s ease, color 0.5s ease;
+    display: flex; overflow: hidden;
+  }
+  body.dark {
+    background: var(--bg-dark);
+    color: var(--text-dark);
+  }
+  #container {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+  }
+  #sidebar {
+    width: 280px;
+    background: var(--sidebar-bg-light);
+    color: #cbd5e1;
+    box-shadow: 3px 0 8px rgba(0,0,0,0.15);
+    border-right: 2px solid var(--border-light);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  body.dark #sidebar {
+    background: var(--sidebar-bg-dark);
+    color: #a0aec0;
+    border-right: 2px solid var(--border-dark);
+  }
+  #sidebar button {
+    background: none;
+    border: none;
+    font-weight: 700;
+    font-size: 17px;
+    padding: 19px 28px;
+    text-align: left;
+    cursor: pointer;
+    border-left: 5px solid transparent;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    color: inherit;
+  }
+  #sidebar button.active {
+    background: var(--color-primary);
+    color: white;
+    border-left-color: var(--color-primary-dark);
+  }
+  #sidebar button:hover:not(.active) {
+    background: var(--sidebar-bg-light);
+    color: var(--color-primary-dark);
+  }
+  body.dark #sidebar button:hover:not(.active) {
+    background: var(--sidebar-bg-dark);
+    color: var(--color-primary-dark);
+  }
+  #content {
+    flex-grow: 1;
+    background: var(--table-bg-light);
+    padding: 40px 60px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    border-radius: 0 24px 24px 0;
+    transition: background 0.5s ease, color 0.5s ease;
+    color: var(--text-light);
+  }
+  body.dark #content {
+    background: var(--table-bg-dark);
+    color: var(--text-dark);
+  }
+  h1 {
+    margin: 0 0 30px 0;
+    font-weight: 800;
+    font-size: 2.2rem;
+  }
+  #kpi-cards {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    margin-bottom: 44px;
+  }
+  .kpi-card {
+    background-color: #e0ecff;
+    border-radius: 24px;
+    padding: 28px 36px;
+    box-shadow: 0 14px 40px rgba(33,102,244,0.25);
+    color: var(--text-light);
+    font-weight: 700;
+    flex: 1 1 180px;
+    user-select: none;
+    transition: box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .kpi-card:hover {
+    box-shadow: 0 18px 58px rgba(33,102,244,0.5);
+  }
+  body.dark .kpi-card {
+    background-color: #344a6d;
+    color: var(--text-dark);
+    box-shadow: 0 14px 38px rgba(22,68,73,0.3);
+  }
+  .kpi-value {
+    font-size: 44px;
+    color: var(--color-primary);
+    margin-bottom: 8px;
+  }
+  body.dark .kpi-value {
+    color: var(--color-primary-dark);
+  }
+  .kpi-label {
+    font-size: 15px;
+    letter-spacing: 0.04em;
+  }
+  #audit-charts {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 36px;
+    margin-top: 38px;
+  }
+  #graph1, #graph2 {
+    background: var(--table-bg-light);
+    border-radius: 24px;
+    box-shadow: 0 14px 40px rgba(26,42,61,0.27);
+    min-width: 320px;
+    max-width: 48%;
+    min-height: 460px;
+    max-height: 480px;
+    padding: 6px;
+  }
+  body.dark #graph1,
+  body.dark #graph2 {
+    background: var(--table-bg-dark);
+    box-shadow: 0 14px 42px rgba(7,21,35,0.5);
+  }
+  .legenda {
+    margin-top: 48px;
+    font-weight: 700;
+    font-size: 18px;
+    user-select: none;
+    display: flex;
+    gap: 2rem;
+    color: var(--text-light);
+  }
+  body.dark .legenda {
+    color: var(--text-dark);
+  }
+  .legenda span {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .legenda .dev::before { content: '🟥'; }
+  .legenda .esp::before { content: '🟨'; }
+  .legenda .exc::before { content: '🟩'; }
+  @media (max-width:900px) {
+    #container { flex-direction: column; }
+    #sidebar {
+      flex-direction: row;
+      height: 60px;
+      width: 100%;
+      border-radius: 0;
+      box-shadow: none;
+      border-bottom: 2px solid var(--border-light);
+    }
+    body.dark #sidebar {
+      border-bottom: 2px solid var(--border-dark);
+    }
+    #sidebar button {
+      border-left: none !important;
+      border-bottom: 3px solid transparent !important;
+      margin: 0 12px !important;
+      padding: 11px 14px !important;
+      font-size: 14px;
+    }
+    #sidebar button:hover, #sidebar button.active {
+      border-bottom: 3px solid var(--color-primary) !important;
+      background: transparent !important;
+      color: var(--color-primary);
+    }
+    #content {
+      border-radius: 0;
+      padding: 24px 32px;
+      height: auto;
+    }
+    #kpi-cards {
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .kpi-card {
+      min-width: 260px;
+      padding: 20px 28px;
+      font-size: 14px;
+    }
+    #graph1, #graph2 {
+      max-width: 100vw;
+      width: 95vw;
+      min-height: 320px;
+      max-height: 320px;
+      box-shadow: 0 10px 20px rgba(7,21,35,0.2);
+    }
+    #audit-charts {
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 30px;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="container" role="application">
+  <nav id="sidebar" role="tablist" aria-label="Navigation tabs"></nav>
+  <main id="content" role="tabpanel" tabindex="0">
+    <h1>KPIs 📊</h1>
+  </main>
+</div>
+<button id="theme-switch" aria-label="Toggle dark/light mode" title="Toggle theme" style="position: fixed; bottom: 30px; right: 30px; padding: 12px 18px; border: none; border-radius: 30px; background: #2563eb; color: #fff; cursor: pointer; box-shadow: 0 10px 20px rgba(37,99,235,0.3); z-index: 999;">🌙</button>
+<script>
+// Dados base e funções para gráficos, classificação, percentuais e tabela
+
+const consolidado = { "Chamados Totais": [362], "Tempo médio de resposta ⏰": [21], "Tempo médio de atendimento ⏱️": [56], "CSAT ⭐": [95], "Audit 📋": [9.6], "Índice de respostas CSAT 📈": [16.6], "Taxa de abandono 🚫": [4.8] };
+const dadosAbrSet = { "Volume de chamados 💻": [351, 325, 342, 364, 431, 337], "Tempo de resposta ⏰": [18, 23, 20, 23, 21, 18], "Tempo de atendimento geral ⏱️": [60.8, 57.6, 53.4, 53.5, 55.1, 55.6], "CSAT ⭐": [94.12, 100, 93.94, 93.55, 94.94, 91.67], "Audit 📋": ["-", "-", 9.6, 9.6, 9.6, 9.6] };
+const dadosOutMar = { "Tempo de resposta ⏰": [17, 12, 17, 20, 23, 18], "Volume de chamados 💻": [358, 400, 444, 456, 468, 388], "Tempo de atendimento geral ⏱️": [49.9, 53.3, 55.5, 76.6, 69.5, 58.4], "CSAT ⭐": [97.06, 98.61, 94.87, 97.22, 96.25, 92.98], "Audit 📋": [9.5, 9.67, 10, 9.75, 10, 9.75] };
+
+const metricas_audit_grafico = [{ min: 0, max: 4, label: "Necessitou desenvolvimento", color: "#e74c3c" }, { min: 4, max: 8, label: "Dentro do esperado", color: "#f39c12" }, { min: 8, max: 10.01, label: "Excepcional", color: "#27ae60" }];
+const metricas = {
+  "Tempo de resposta ⏰": [{ min: 0, max: 20, label: "Excepcional", color: "#27ae60" }, { min: 20, max: 60, label: "Dentro do esperado", color: "#f39c12" }, { min: 60, max: 1000, label: "Necessitou desenvolvimento", color: "#e74c3c" }],
+  "Volume de chamados 💻": [{ min: 0, max: 220, label: "Necessitou desenvolvimento", color: "#e74c3c" }, { min: 220, max: 1000, label: "Dentro do esperado", color: "#f39c12" }],
+  "Tempo de atendimento geral ⏱️": [{ min: 0, max: 54, label: "Excepcional", color: "#27ae60" }, { min: 54, max: 70, label: "Dentro do esperado", color: "#f39c12" }, { min: 70, max: 1000, label: "Necessitou desenvolvimento", color: "#e74c3c" }],
+  "CSAT ⭐": [{ min: 0, max: 91, label: "Necessitou desenvolvimento", color: "#e74c3c" }, { min: 91, max: 95, label: "Dentro do esperado", color: "#f39c12" }, { min: 95, max: 100.01, label: "Excepcional", color: "#27ae60" }],
+  "Audit 📋": metricas_audit_grafico, "Índice de respostas CSAT 📈": [{ min: 0, max: 12, label: "Necessitou desenvolvimento", color: "#e74c3c" }, { min: 12, max: 1000, label: "Excepcional", color: "#27ae60" }],
+  "Taxa de abandono 🚫": [{ min: 0, max: 12, label: "Excepcional", color: "#27ae60" }, { min: 12, max: 1000, label: "Necessitou desenvolvimento", color: "#e74c3c" }]
+};
+
+const mesesAbrSet = ["Abr", "Mai", "Jun", "Jul", "Ago", "Set"];
+const mesesOutMar = ["Out", "Nov", "Dez", "Jan", "Fev", "Mar"];
+
+const abasPrincipais = Object.keys(dadosAbrSet);
+const idxCSAT = abasPrincipais.indexOf("CSAT ⭐");
+let abasFinal = abasPrincipais.slice();
+abasFinal.splice(idxCSAT + 1, 0, "Audit 📋");
+abasFinal = abasFinal.filter(ind => ind !== "Audit 📋").concat(["Audit 📋", "Média Geral Abr-Set", "Média Geral Out-Mar", "Comparativo Médias", "Consolidado"]);
+
+const sidebar = document.getElementById("sidebar");
+const content = document.getElementById("content");
+
+function classificaValor(ind, valor) {
+  const faixa = metricas[ind]?.find(f => valor >= f.min && valor < f.max);
+  if (!faixa) return ["Sem classificação", "#999999"];
+  return [faixa.label, faixa.color];
+}
+
+function criaGrafico(indicador, dadosPeriodo, mesesPeriodo) {
+  const valores = dadosPeriodo[indicador];
+  let metricasIndicador = metricas[indicador];
+  let yMin, yMax, cores;
+  if (indicador === "Audit 📋") {
+    yMin = 0; yMax = 10;
+    metricasIndicador = metricas_audit_grafico;
+    cores = valores.map(v => Number(v) > 8 ? "#27ae60" : Number(v) >= 4 ? "#f39c12" : "#e74c3c");
+  } else {
+    yMin = Math.min(...valores.filter(v => !isNaN(v))) * 0.8;
+    yMax = Math.max(...valores.filter(v => !isNaN(v))) * 1.2;
+    cores = valores.map(v => classificaValor(indicador, v)[1]);
+  }
+  const shapes = metricasIndicador.map(f => ({
+    type: 'rect', xref: 'paper', yref: 'y',
+    x0: 0, x1: 1, y0: f.min, y1: f.max,
+    fillcolor: f.color + "33", line: {width: 0}, layer: "below"
+  }));
+  return {
+    data: [{
+      x: mesesPeriodo,
+      y: valores,
+      mode: 'lines+markers',
+      line: {color: "#34495E", shape: 'spline', width: 3},
+      marker: {color: cores, size: 12, line: {width: 2, color: '#34495E'}},
+      hoverinfo: 'x+y'
+    }],
+    layout: {
+      title: {text: indicador, font: {size: 24, family: "'Inter', sans-serif"}},
+      margin: {t: 60, r: 40, b: 50, l: 60},
+      yaxis: {range: [yMin, yMax], zeroline: false, title: indicador, tickfont: {size: 14}, gridcolor: "#d3d9e6"},
+      xaxis: {title: "Meses", tickfont: {size: 14}, showgrid: false},
+      shapes,
+      plot_bgcolor: "#fafafa",
+      hovermode: "closest",
+      font: {family: "'Inter', sans-serif", size: 14, color: "#2c3e50"}
+    }
+  };
+}
+
+function criaLegendaHTML() {
+  return `<div class="legenda" aria-label="Legenda">
+    <span class="dev">Necessitou desenvolvimento</span>
+    <span class="esp">Dentro do esperado</span>
+    <span class="exc">Excepcional</span>
+  </div>`;
+}
+
+function calculaPorcentagens(indicador, dadosPeriodo) {
+  const valores = dadosPeriodo[indicador];
+  const valsNum = valores.filter(v => !isNaN(Number(v)));
+  if (!valsNum.length) return { "Necessitou desenvolvimento": 0, "Dentro do esperado": 0, "Excepcional": 0 };
+  const tot = valsNum.length;
+  const cont = { "Necessitou desenvolvimento": 0, "Dentro do esperado": 0, "Excepcional": 0 };
+  valsNum.forEach(v => {
+    const [label] = classificaValor(indicador, Math.round(Number(v)));
+    cont[label] = (cont[label] || 0) + 1;
+  });
+  return {
+    "Necessitou desenvolvimento": ((cont["Necessitou desenvolvimento"] / tot) * 100).toFixed(0),
+    "Dentro do esperado": ((cont["Dentro do esperado"] / tot) * 100).toFixed(0),
+    "Excepcional": ((cont["Excepcional"] / tot) * 100).toFixed(0)
+  };
+}
+
+function criaPercentuaisHTML(indicador, dadosPeriodo) {
+  const valores = dadosPeriodo[indicador];
+  if (indicador === "CSAT ⭐" && valores && valores.some(v => Math.round(v) >= 100)) {
+    return `<div class="percentages" aria-label="Percentual CSAT"><div class="bolinha-verde"></div><div style="display:inline-block;font-weight:700;color:#166534;">100% Excepcional</div></div>`;
+  }
+  const pct = calculaPorcentagens(indicador, dadosPeriodo);
+  return `<div class="percentages" aria-label="Percentuais">
+    <div style="background-color:#fcdada;color:#b42318;" title="Necessitou desenvolvimento">❌ ${pct["Necessitou desenvolvimento"]}%</div>
+    <div style="background-color:#fff1cc;color:#78350f;" title="Dentro do esperado">✅ ${pct["Dentro do esperado"]}%</div>
+    <div style="background-color:#ddf6d9;color:#166534;" title="Excepcional">🌟 ${pct["Excepcional"]}%</div>
+  </div>`;
+}
+
+function criaMediaGeralHTML(dadosPeriodo) {
+  let linhas = "";
+  Object.keys(dadosPeriodo).forEach(indicador => {
+    const valores = dadosPeriodo[indicador];
+    let valoresNumericos = valores.filter(v => !isNaN(parseFloat(v)));
+    let media = valoresNumericos.length > 0 ? (valoresNumericos.reduce((a, b) => Number(a) + Number(b), 0) / valoresNumericos.length) : "-";
+    if (indicador === "CSAT ⭐") media = Math.round(media);
+    if (indicador === "Audit 📋") {
+      media = 9.6;
+      linhas += `<tr><td>${indicador}</td><td>9.6</td><td style="font-weight:700; color:#27ae60">Excepcional</td></tr>`;
+      return;
+    }
+    let [classif, cor] = classificaValor(indicador, media);
+    linhas += `<tr><td>${indicador}</td><td>${typeof media === "number" ? media.toFixed(1) : media}</td><td style="font-weight:700; color:${cor}">${classif}</td></tr>`;
+  });
+  return `<table role="table" aria-label="Tabela média geral" style="min-width: 320px;">
+    <thead><tr><th>Indicador</th><th>Média</th><th>Classificação</th></tr></thead><tbody>${linhas}</tbody></table>`;
+}
+
+function criaTabelaComparativoHTML() {
+  let linhas = "";
+  Object.keys(dadosAbrSet).forEach(ind => {
+    if (ind === "CSAT Positivas" || ind === "CSAT Negativas") return;
+    const valoresOutMar = dadosOutMar[ind];
+    let mediaAbrSet;
+    if (ind === "Volume de chamados 💻") mediaAbrSet = consolidado["Chamados Totais"][0];
+    else if (ind === "Tempo de resposta ⏰") mediaAbrSet = consolidado["Tempo médio de resposta ⏰"][0];
+    else if (ind === "Tempo de atendimento geral ⏱️") mediaAbrSet = consolidado["Tempo médio de atendimento ⏱️"][0];
+    else if (ind === "CSAT ⭐") mediaAbrSet = consolidado["CSAT ⭐"][0];
+    else if (ind === "Audit 📋") mediaAbrSet = consolidado["Audit 📋"][0];
+    else {
+      const valsAbrSet = dadosAbrSet[ind];
+      mediaAbrSet = valsAbrSet.filter(v => !isNaN(v)).reduce((a, b) => Number(a) + Number(b), 0) / valsAbrSet.filter(v => !isNaN(v)).length;
+    }
+    const mediaOutMar = valoresOutMar.filter(v => !isNaN(v)).reduce((a, b) => Number(a) + Number(b), 0) / valoresOutMar.filter(v => !isNaN(v)).length;
+    const diff = mediaAbrSet - mediaOutMar;
+    let corDiff = "#27ae60";
+    if (ind === "Tempo de resposta ⏰") corDiff = diff > 0 ? "#e74c3c" : "#27ae60";
+    else if (ind === "Volume de chamados 💻" || ind === "Tempo de atendimento geral ⏱️") corDiff = diff < 0 ? "#27ae60" : "#e74c3c";
+    else if (ind === "CSAT ⭐") corDiff = diff >= 0 ? "#27ae60" : "#e74c3c";
+    else if (ind === "Audit 📋") corDiff = mediaAbrSet > 9 ? "#27ae60" : "#e74c3c";
+    else corDiff = diff >= 0 ? "#27ae60" : "#e74c3c";
+    linhas += `<tr><td>${ind}</td><td>${mediaOutMar.toFixed(2)}</td><td>${mediaAbrSet.toFixed(2)}</td><td style="color:${corDiff}; font-weight:600;">${(diff >= 0 ? "+" : "") + diff.toFixed(2)}</td></tr>`;
+  });
+  const totalChamadosOutMar = 419;
+  const totalChamadosAbrSet = consolidado["Chamados Totais"][0];
+  const diffChamados = totalChamadosAbrSet - totalChamadosOutMar;
+  const corDiffChamados = diffChamados < 0 ? "#27ae60" : "#e74c3c";
+  linhas += `<tr style="font-weight:bold; background:#f0f4ff;"><td>Total Chamados Out-Mar</td><td>${totalChamadosOutMar}</td><td>${totalChamadosAbrSet}</td><td style="color:${corDiffChamados}; font-weight:600;">${(diffChamados >= 0 ? "+" : "") + diffChamados}</td></tr>`;
+  return `<table role="table" aria-label="Tabela comparativa médias" style="min-width:320px;">
+        <thead><tr><th>Indicador</th><th>Média Out-Mar</th><th>Média Abr-Set</th><th>Diferença</th></tr></thead><tbody>${linhas}</tbody></table>`;
+}
+
+function exibeConsolidado() {
+  let html = `<h2>Resumo Consolidado 📊</h2><table><thead><tr><th>Indicador</th><th>Valor</th><th>Classificação</th></tr></thead><tbody>`;
+  Object.keys(consolidado).forEach(ind => {
+    const val = consolidado[ind][0];
+    let cl, cor;
+    if (ind === "Chamados Totais" || ind === "Tempo médio de resposta ⏰" || ind === "Tempo médio de atendimento ⏱️") {
+      cl = "Dentro do esperado";
+      cor = "#f39c12";
+    } else if (ind === "Audit 📋") {
+      if (val > 9) {
+        cl = "Excepcional";
+        cor = "#27ae60";
+      } else {
+        [cl, cor] = classificaValor(ind, val);
+      }
+    } else {
+      [cl, cor] = classificaValor(ind, val);
+    }
+    html += `<tr><td>${ind}</td><td style="font-weight:bold; color:#34495E;">${typeof val === "number" ? val.toFixed(2) : val}</td><td style="font-weight:bold; color:${cor};">${cl}</td></tr>`;
+  });
+  html += "</tbody></table>";
+  return html;
+}
+
+function criarSidebar() {
+  abasFinal.forEach((ind, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = ind;
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", i === 0 ? "true" : "false");
+    btn.setAttribute("tabindex", i === 0 ? "0" : "-1");
+    btn.onclick = () => setActiveTab(i);
+    if (i === 0) btn.classList.add("active");
+    sidebar.appendChild(btn);
+  });
+}
+
+function atualizaKpiCards(indicador) {
+  const container = document.getElementById("kpi-cards");
+  if (!container) return;
+  container.innerHTML = "";
+  if (!indicador || !consolidado[indicador]) return;
+  const val = consolidado[indicador][0];
+  const [label, color] = classificaValor(indicador, val);
+  const div = document.createElement("div");
+  div.className = "kpi-card";
+  div.innerHTML = `<div class="kpi-value" style="color:${color}">${typeof val === "number" ? val.toFixed(1) : val}</div><div class="kpi-label">${indicador}</div>`;
+  container.appendChild(div);
+}
+
+function setActiveTab(idx) {
+  [...sidebar.children].forEach((btn, i) => {
+    btn.classList.toggle("active", i === idx);
+    btn.setAttribute("aria-selected", i === idx ? "true" : "false");
+    btn.setAttribute("tabindex", i === idx ? "0" : "-1");
+  });
+
+  content.innerHTML = "<h1>KPIs 📊</h1>";
+
+  if (idx === abasFinal.indexOf("Consolidado")) {
+    content.innerHTML += exibeConsolidado();
+  } else if (idx === abasFinal.indexOf("Média Geral Abr-Set")) {
+    content.innerHTML += `<h2>KPI's Abril a Setembro 📊</h2>` + criaMediaGeralHTML(dadosAbrSet);
+  } else if (idx === abasFinal.indexOf("Média Geral Out-Mar")) {
+    content.innerHTML += `<h2>KPI's Outubro a Março 📊</h2>` + criaMediaGeralHTML(dadosOutMar);
+  } else if (idx === abasFinal.indexOf("Comparativo Médias")) {
+    content.innerHTML += `<h2>Comparativo das Médias 📈</h2>` + criaTabelaComparativoHTML();
+  } else if (idx === abasFinal.indexOf("Audit 📋")) {
+    content.innerHTML += `<h2>Audit 📋</h2>
+      <div id="audit-charts"><div id="graph1"></div><div id="graph2"></div></div>` + criaLegendaHTML();
+    const auditAbrSet = mesesAbrSet.map((_, i) => {
+      const v = dadosAbrSet["Audit 📋"][i];
+      return isNaN(v) ? null : Number(v);
+    });
+    const auditOutMar = mesesOutMar.map((_, i) => {
+      const v = dadosOutMar["Audit 📋"][i];
+      return isNaN(v) ? null : Number(v);
+    });
+    const periodoAudit1 = { "Audit 📋": auditAbrSet };
+    const periodoAudit2 = { "Audit 📋": auditOutMar };
+    const grafico1 = criaGrafico("Audit 📋", periodoAudit1, mesesAbrSet);
+    const grafico2 = criaGrafico("Audit 📋", periodoAudit2, mesesOutMar);
+    grafico1.layout.yaxis.autorange = false;
+    grafico1.layout.yaxis.range = [0, 10];
+    grafico2.layout.yaxis.autorange = false;
+    grafico2.layout.yaxis.range = [0, 10];
+    Plotly.newPlot("graph1", grafico1.data, grafico1.layout, { responsive: true, displayModeBar: false });
+    Plotly.newPlot("graph2", grafico2.data, grafico2.layout, { responsive: true, displayModeBar: false });
+  } else {
+    const ind = abasFinal[idx];
+    atualizaKpiCards(ind);
+    content.innerHTML += `
+      <section id="kpi-cards" aria-label="Indicador da métrica"></section>
+      <h2>KPI's 📊 - ${ind}</h2>
+      <div id="graph1"></div>
+      <div id="graph2" style="margin-top:30px;"></div>
+      ${criaLegendaHTML()}
+      <section aria-label="Percentuais Abril a Setembro"><h3 style="margin-top:22px; font-weight:600;">Abr-Set</h3>${criaPercentuaisHTML(ind, dadosAbrSet)}</section><section aria-label="Percentuais Outubro a Março"><h3 style="margin-top:22px; font-weight:600;">Out-Mar</h3>${criaPercentuaisHTML(ind, dadosOutMar)}</section>`;
+    Plotly.newPlot("graph1", criaGrafico(ind, dadosAbrSet, mesesAbrSet).data, criaGrafico(ind, dadosAbrSet, mesesAbrSet).layout, { displayModeBar: false, responsive: true });
+    Plotly.newPlot("graph2", criaGrafico(ind, dadosOutMar, mesesOutMar).data, criaGrafico(ind, dadosOutMar, mesesOutMar).layout, { displayModeBar: false, responsive: true });
+  }
+}
+
+const themeSwitch = document.getElementById("theme-switch");
+function loadTheme() {
+  const dark = localStorage.getItem("darkTheme") === "true";
+  document.body.classList.toggle("dark", dark);
+  themeSwitch.textContent = dark ? "Modo ☀️" : "Modo 🌙";
+}
+function toggleTheme() {
+  document.body.classList.toggle("dark");
+  const isDark = document.body.classList.contains("dark");
+  localStorage.setItem("darkTheme", isDark);
+  themeSwitch.textContent = isDark ? "Modo ☀️" : "Modo 🌙";
+}
+themeSwitch.addEventListener("click", toggleTheme);
+loadTheme();
+
+criarSidebar();
+setActiveTab(0);
+</script>
+</body>
+</html>
